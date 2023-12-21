@@ -76,5 +76,10 @@
     // Uncomment the next line if you want to keep your containers running after VS Code shuts down.
     // "shutdownAction": "none",
     // Uncomment the next line to run commands after the container is created.
-    "postCreateCommand": "cat .devcontainer/bashrc.override.sh >> ~/.bashrc"
+    "forwardPorts": [
+        8000,
+        5432,
+        6379
+    ],
+    "postCreateCommand": "cat .devcontainer/bashrc.override.sh >> ~/.bashrc && apt-get update && apt-get install -y docker.io && apt install redis-server --port 6379"
 }
