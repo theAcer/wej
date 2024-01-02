@@ -1,11 +1,11 @@
 # wagers/tests.py
 from django.test import TestCase
-from users.models import CustomUser
+from wej_core.users.models import User
 from django.urls import reverse
 from django.core.cache import cache
 from .models import Event, Participant,Wager, WagerManager, WagerRequest
 
-from wagers.exceptions import AlreadyExistsError, AlreadyParticipantError
+from wej_core.wagers.exceptions import AlreadyExistsError, AlreadyParticipantError
 
 
 
@@ -65,7 +65,7 @@ class BaseTestCase(TestCase):
         return login(self, user, password)
 
     def create_user(self, username, email_address, password):
-        user = CustomUser.objects.create_user(username, email_address, password)
+        user = User.objects.create_user(username, email_address, password)
         return user
     
     def create_participant(self, user):

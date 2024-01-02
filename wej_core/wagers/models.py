@@ -2,9 +2,10 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from wej_core.users.models import User
 
 from django.utils.translation import gettext_lazy as _
-from wagers.signals import (
+from wej_core.wagers.signals import (
     wager_request_accepted,
     wager_request_rejected,
     wager_request_canceled,

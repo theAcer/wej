@@ -86,6 +86,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "wej_core.users",
+    "wej_core.wagers",
     
     # Your stuff: custom apps go here
 ]
