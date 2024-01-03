@@ -31,11 +31,26 @@ class BaseTestCase(TestCase):
 
         """
         self.user_pw = "test"
-        self.user_bob = self.create_user("bob", "bob@bob.com", self.user_pw)
-        self.user_steve = self.create_user("steve", "steve@steve.com", self.user_pw)
-        self.user_susan = self.create_user("susan", "susan@susan.com", self.user_pw)
-        self.user_amy = self.create_user("amy", "amy@amy.amy.com", self.user_pw)
-
+        
+        self.user_bob = User.objects.create_user(
+            email="bob@bob.com",
+            password= self.user_pw,
+        )
+            
+        self.user_steve = User.objects.create_user(
+            email="steve@steve.com",
+            password= self.user_pw,
+        )
+            
+        self.user_susan = User.objects.create_user(
+            email="susan@susan.com",
+            password= self.user_pw,
+        )
+            
+        self.user_amy = User.objects.create_user(
+            email="amy@amy.com",
+            password= self.user_pw,
+        )
         """
         setup some participants
         """
