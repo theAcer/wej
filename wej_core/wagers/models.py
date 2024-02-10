@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from wej_core.users.models import User
 
+
 from django.utils.translation import gettext_lazy as _
 
 AUTH_USER_MODEL = getattr(settings, "AUTH_USER_MODEL", "auth.User")
@@ -16,17 +17,6 @@ from wej_core.wagers.signals import (
     wager_removed,
     wager_request_created,
 )
-
-
-class WagerParticipant(models.Model):
-    """Model to represent participation"""
-    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
-    contributed_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    winnings = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    is_creator = models.BooleanField(default=False)
-
-    def __str__(self):
-        return str(self.user)
 
 class WagerManager(models.Manager):
     """Wagers manager"""
@@ -56,7 +46,7 @@ class WagerManager(models.Manager):
     def unrejected_requests_count(self):
         pass
 
-    
+
 class Wager(models.Model):
     title = models.CharField(max_length=100, null=True)
     creator = models.ForeignKey(AUTH_USER_MODEL, models.CASCADE, related_name="creator", null=True)
@@ -65,35 +55,57 @@ class Wager(models.Model):
     stake = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     winning_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True)
     number_of_winners = models.PositiveIntegerField(null=True)
-    participants = models.ManyToManyField('WagerParticipant', related_name='wagers')
+    participants = models.ManyToManyField(AUTH_USER_MODEL, related_name='wagers')
     objects = WagerManager()
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
         # Add the creator as a participant if not already added
-        creator_participant, created = Participant.objects.get_or_create(user=self.creator)
+        creator_participant, created = WagerParticipant.objects.get_or_create(participant=self.creator)
         if created:
             WagerParticipant.objects.create(wager=self, participant=creator_participant, is_creator=True)
 
+
     def add_participant(self, user):
         """Add a participant to the specified wager"""
-        participant, created = Participant.objects.get_or_create(user=user)
+        participant, created = WagerParticipant.objects.get_or_create(participant=user)
         WagerParticipant.objects.create(wager=self, participant=participant)
         return participant
 
     def remove_participant(self, user):
         """Remove a participant from the specified wager"""
-        participant = self.participants.filter(user=user).first()
+        participant = self.participants.filter(participant=user).first()
         if participant:
             WagerParticipant.objects.filter(wager=self, participant=participant).delete()
 
     def is_participant(self, user):
         """Check if a user is a participant in the wager"""
-        return self.participants.filter(user=user).exists()
+        return self.participants.filter(participant=user).exists()
 
     def __str__(self):
         return f"{self.description} - {self.title}"
+
+
+class WagerParticipant(models.Model):
+    """Model to represent participation"""
+    participant = models.ForeignKey(
+        AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        default=None,
+    )
+    wager = models.ForeignKey(Wager, on_delete=models.CASCADE, null=True, default=None)
+    contributed_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    winnings = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_creator = models.BooleanField(default=False)
+
+    def __str__(self):
+        return str(self.wager)
+
+
+    
+
 
 class Event(models.Model):
     creator = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
