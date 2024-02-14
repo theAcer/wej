@@ -3,11 +3,12 @@ from django.conf import settings
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from wej_core.users.models import User
+from django.conf import settings
 
 
 from django.utils.translation import gettext_lazy as _
 
-AUTH_USER_MODEL = getattr(settings, "AUTH_USER_MODEL", "auth.User")
+AUTH_USER_MODEL = settings.AUTH_USER_MODEL
 
 from wej_core.wagers.signals import (
     wager_request_accepted,
@@ -49,23 +50,18 @@ class WagerManager(models.Manager):
 
 class Wager(models.Model):
     title = models.CharField(max_length=100, null=True)
-    creator = models.ForeignKey(AUTH_USER_MODEL, models.CASCADE, related_name="creator", null=True)
+    creator = models.ForeignKey(AUTH_USER_MODEL, models.CASCADE, related_name="wagers_created", null=True)
     description = models.TextField(null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     stake = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     winning_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True)
     number_of_winners = models.PositiveIntegerField(null=True)
-    participants = models.ManyToManyField(AUTH_USER_MODEL, related_name='wagers')
+    participants = models.ManyToManyField(AUTH_USER_MODEL, related_name='wagers_participated', blank=True)
     objects = WagerManager()
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-
-        # Add the creator as a participant if not already added
-        creator_participant, created = WagerParticipant.objects.get_or_create(participant=self.creator)
-        if created:
-            WagerParticipant.objects.create(wager=self, participant=creator_participant, is_creator=True)
-
+    
 
     def add_participant(self, user):
         """Add a participant to the specified wager"""
@@ -85,23 +81,25 @@ class Wager(models.Model):
 
     def __str__(self):
         return f"{self.description} - {self.title}"
+    
+    @classmethod
+    def post_save_handler(cls, sender, instance, created, **kwargs):
+        """Signal receiver to add creator as a participant when a Wager is saved."""
+        if created:
+            creator_participant, _ = WagerParticipant.objects.get_or_create(participant=instance.creator)
+            WagerParticipant.objects.create(wager=instance, participant=creator_participant, is_creator=True)
+
+# Connect the post_save signal to the model
+models.signals.post_save.connect(Wager.post_save_handler, sender=Wager)
 
 
 class WagerParticipant(models.Model):
-    """Model to represent participation"""
-    participant = models.ForeignKey(
-        AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True,
-        default=None,
-    )
-    wager = models.ForeignKey(Wager, on_delete=models.CASCADE, null=True, default=None)
-    contributed_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    winnings = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    wager = models.ForeignKey(Wager, on_delete=models.CASCADE,null=True)
+    participant = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE,null=True)
     is_creator = models.BooleanField(default=False)
 
     def __str__(self):
-        return str(self.wager)
+        return f"{self.participant} - {self.wager}"
 
 
     
