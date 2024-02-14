@@ -53,56 +53,47 @@ class Wager(models.Model):
     creator = models.ForeignKey(AUTH_USER_MODEL, models.CASCADE, related_name="wagers_created", null=True)
     description = models.TextField(null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, null=True)
-    stake = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     winning_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True)
     number_of_winners = models.PositiveIntegerField(null=True)
-    participants = models.ManyToManyField(AUTH_USER_MODEL, related_name='wagers_participated', blank=True)
+    participants = models.ManyToManyField(
+        AUTH_USER_MODEL,
+        through='WagerParticipant',
+        related_name='wagers_participated',
+        blank=True
+        )
     objects = WagerManager()
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-    
+        if self.creator not in self.participants.all():
+            self.participants.add(self.creator)
 
-    def add_participant(self, user):
-        """Add a participant to the specified wager"""
-        participant, created = WagerParticipant.objects.get_or_create(participant=user)
-        WagerParticipant.objects.create(wager=self, participant=participant)
-        return participant
+    def add_participant(self, user, stake):
+        """Add a participant to the specified wager with a stake"""
+        participant, created = WagerParticipant.objects.get_or_create(wager=self, user=user)
+        participant.stake = stake
+        participant.save()
 
     def remove_participant(self, user):
         """Remove a participant from the specified wager"""
-        participant = self.participants.filter(participant=user).first()
-        if participant:
-            WagerParticipant.objects.filter(wager=self, participant=participant).delete()
+        self.participants.filter(user=user).delete()
 
     def is_participant(self, user):
         """Check if a user is a participant in the wager"""
-        return self.participants.filter(participant=user).exists()
+        return self.participants.filter(user=user).exists()
 
     def __str__(self):
         return f"{self.description} - {self.title}"
-    
-    @classmethod
-    def post_save_handler(cls, sender, instance, created, **kwargs):
-        """Signal receiver to add creator as a participant when a Wager is saved."""
-        if created:
-            creator_participant, _ = WagerParticipant.objects.get_or_create(participant=instance.creator)
-            WagerParticipant.objects.create(wager=instance, participant=creator_participant, is_creator=True)
-
-# Connect the post_save signal to the model
-models.signals.post_save.connect(Wager.post_save_handler, sender=Wager)
 
 
 class WagerParticipant(models.Model):
-    wager = models.ForeignKey(Wager, on_delete=models.CASCADE,null=True)
-    participant = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE,null=True)
+    wager = models.ForeignKey(Wager, on_delete=models.CASCADE, null=True)
+    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
+    stake = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     is_creator = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.participant} - {self.wager}"
-
-
-    
+        return f"{self.user} - {self.wager}"
 
 
 class Event(models.Model):
@@ -137,6 +128,7 @@ class WagerRequestManager(models.Manager):
         if wager_request.to_user == user and not wager_request.viewed:
             wager_request.viewed = timezone.now()
             wager_request.save()
+
 
 class WagerRequest(models.Model):
     """Model to represent Wager requests"""
@@ -216,3 +208,4 @@ class WagerInvitation(models.Model):
 
     def __str__(self):
         return f"{self.sender} invited {self.recipient} to {self.event}"
+

@@ -10,10 +10,14 @@ user_pw = "test"
 
 @pytest.fixture
 def user_steve():
-    return get_user_model().objects.create_user(
-            email="steve@steve.com",
-            password= user_pw,
-        )
+    user = get_user_model().objects.create_user(
+        email="steve@steve.com",
+        password=user_pw,
+    )
+    assert isinstance(user, get_user_model())  # Ensure 'user' is a User instance
+    return user
+
+    
 
 @pytest.fixture
 def user_bob():
@@ -28,16 +32,17 @@ def user_bob():
 
 @pytest.fixture
 def test_wager(user_steve):
-    return Wager.objects.create(
+    test_wager = Wager.objects.create(
         title="Test Wager",
         creator=user_steve,
         description="Test Wager Description",
         amount=100.00,
-        stake=10.00,
-        winning_percentage=50.00,
         number_of_winners=1,
 
     )
+    assert test_wager.title == "Test Wager"
+    assert test_wager.creator.email == "steve@steve.com"
+    return test_wager
 
 @pytest.fixture
 def wager_request(user_steve, user_bob, test_wager):
