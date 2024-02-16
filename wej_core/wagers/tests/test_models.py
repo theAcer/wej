@@ -24,8 +24,38 @@ def wager_participant(test_wager, user_bob):
 @pytest.mark.django_db
 def test_add_participant(test_wager, user_bob):
     test_wager.add_participant(user_bob, stake=30.00)
-    assert test_wager.participants.filter(user=user_bob).exists()
-    participant = WagerParticipant.objects.get(wager=test_wager, user=user_bob)
+    assert test_wager.is_participant(user_bob)
+    participant = WagerParticipant.objects.get(wager=test_wager, participant=user_bob)
     assert participant.stake == Decimal("30.00")
+
+
+@pytest.mark.django_db
+def test_is_participant(test_wager, user_bob):
+    # Initially, user_bob is not a participant
+    assert not test_wager.is_participant(user_bob)
+
+    # Add user_bob as a participant
+    test_wager.add_participant(user_bob, stake=30.00)
+
+    # Now, user_bob should be a participant
+    assert test_wager.is_participant(user_bob)
+
+@pytest.mark.django_db
+def test_remove_participant(test_wager, user_bob):
+    # Add user_bob as a participant
+    test_wager.add_participant(user_bob, stake=30.00)
+
+    # Check if user_bob is a participant before removal
+    assert test_wager.is_participant(user_bob)
+
+    # Remove user_bob as a participant using remove_participant method
+    test_wager.remove_participant(user_bob)
+
+    # Now, user_bob should not be a participant
+    assert not test_wager.is_participant(user_bob)
+
+    # Check that the participant is removed from WagerParticipant model
+    with pytest.raises(WagerParticipant.DoesNotExist):
+        WagerParticipant.objects.get(wager=test_wager, participant=user_bob)
 
 

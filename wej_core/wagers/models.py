@@ -70,17 +70,19 @@ class Wager(models.Model):
 
     def add_participant(self, user, stake):
         """Add a participant to the specified wager with a stake"""
-        participant, created = WagerParticipant.objects.get_or_create(wager=self, user=user)
+        participant, created = WagerParticipant.objects.get_or_create(wager=self, participant=user)
         participant.stake = stake
         participant.save()
+        self.participants.add(user)
 
     def remove_participant(self, user):
-        """Remove a participant from the specified wager"""
-        self.participants.filter(user=user).delete()
+            """Remove a participant from the specified wager"""
+            participant = self.wagerparticipant_set.get(participant=user)
+            participant.delete()
 
     def is_participant(self, user):
         """Check if a user is a participant in the wager"""
-        return self.participants.filter(user=user).exists()
+        return self.wagerparticipant_set.filter(participant=user).exists()
 
     def __str__(self):
         return f"{self.description} - {self.title}"
@@ -88,12 +90,12 @@ class Wager(models.Model):
 
 class WagerParticipant(models.Model):
     wager = models.ForeignKey(Wager, on_delete=models.CASCADE, null=True)
-    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
+    participant = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
     stake = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     is_creator = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.user} - {self.wager}"
+        return f"{self.participant} - {self.wager}"
 
 
 class Event(models.Model):
